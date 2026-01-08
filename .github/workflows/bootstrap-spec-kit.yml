@@ -1,0 +1,53 @@
+name: bootstrap-spec-kit
+
+on:
+  workflow_dispatch:
+    inputs:
+      ai:
+        description: "Template to scaffold (copilot, claude, gemini, cursor-agent, etc.)"
+        required: true
+        default: "copilot"
+        type: string
+      script:
+        description: "Script type: sh (bash/zsh) or ps (PowerShell)"
+        required: true
+        default: "sh"
+        type: string
+      force:
+        description: "Overwrite/merge if repo not empty (true/false)"
+        required: true
+        default: "true"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install Specify CLI (Spec Kit)
+        run: |
+          uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+
+      - name: Initialize Spec Kit in this repo
+        run: |
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            specify init --here --force --ai "${{ github.event.inputs.ai }}" --script "${{ github.event.inputs.script }}" --ignore-agent-tools --no-git
+          else
+            specify init --here --ai "${{ github.event.inputs.ai }}" --script "${{ github.event.inputs.script }}" --ignore-agent-tools --no-git
+          fi
+
+      - name: Commit changes
+        run: |
+          git config user.name "spec-kit-bot"
+          git config user.email "spec-kit-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "Bootstrap Spec Kit" || echo "No changes to commit"
+          git push
