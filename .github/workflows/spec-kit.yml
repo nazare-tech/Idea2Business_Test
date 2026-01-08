@@ -1,0 +1,56 @@
+name: spec-kit
+
+on:
+  workflow_dispatch:
+    inputs:
+      idea:
+        description: "Idea / prompt"
+        required: true
+        type: string
+      mode:
+        description: "spec | plan | tasks | all"
+        required: true
+        default: "all"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install spec-kit
+        run: npm i -g spec-kit
+
+      - name: Run spec-kit
+        env:
+          IDEA: ${{ github.event.inputs.idea }}
+          MODE: ${{ github.event.inputs.mode }}
+        run: |
+          mkdir -p specs plans tasks
+          # Replace with actual spec-kit commands:
+          if [ "$MODE" = "spec" ] || [ "$MODE" = "all" ]; then
+            spec-kit spec --input "$IDEA" --out specs/spec.md
+          fi
+          if [ "$MODE" = "plan" ] || [ "$MODE" = "all" ]; then
+            spec-kit plan --input specs/spec.md --out plans/plan.md
+          fi
+          if [ "$MODE" = "tasks" ] || [ "$MODE" = "all" ]; then
+            spec-kit tasks --input plans/plan.md --out tasks/tasks.md
+          fi
+
+      - name: Commit outputs
+        run: |
+          git config user.name "spec-kit-bot"
+          git config user.email "spec-kit-bot@users.noreply.github.com"
+          git add specs plans tasks
+          git commit -m "Add spec-kit outputs" || echo "No changes"
+          git push
